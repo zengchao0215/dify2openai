@@ -120,7 +120,7 @@ stream.on('data', (chunk) => {
                 res.end();
                 return;
             }
-            const chunkContent = JSON.parse(`"${chunkObj.answer}"`);
+            const chunkContent = JSON.parse(`"${chunkObj.answer.replace(/[\u0000-\u001F\u007F-\u009F]/g, "")}"`);
             const chunkId = chunkObj.id;
             const chunkCreated = chunkObj.created;
             res.write("data: " + JSON.stringify({
