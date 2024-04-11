@@ -175,9 +175,10 @@ stream.on('data', (chunk) => {
             }) + "\n\n");
             res.write("data: [DONE]\n\n");
             res.end();
-        } else {
-            console.log('Unhandled event:', chunkObj.event);
-        }
+        } else if (chunkObj.event === 'agent_thought') {
+} else if (chunkObj.event === 'error') {
+    console.error(`Error: ${chunkObj.code}, ${chunkObj.message}`);
+}
     }
 
     buffer = lines[lines.length - 1];

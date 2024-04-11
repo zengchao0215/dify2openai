@@ -26,8 +26,8 @@ npm start
 ## TODO
 - [ ] More descriptions on readme
 - [ ] Support blocking
-- [ ] Support tools
 - [ ] Support workflow
+- [x] Support tools
 - [x] Support streaming
 - [x] Support Agent bot
 - [x] Support Chat bot
