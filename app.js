@@ -82,6 +82,8 @@ app.post('/v1/chat/completions', async (req, res) => {
                 'user': 'apiuser'
             })
         });
+        console.log('Received response from DIFY API with status:', resp.status);
+
         res.setHeader('Content-Type', 'text/event-stream');
         /*
            --- DOESN'T WORK ---
@@ -91,21 +93,40 @@ app.post('/v1/chat/completions', async (req, res) => {
            --------------------
         */
         const stream = resp.body;
-        stream.on('data', (chunk) => {
-            console.log(`Received chunk: ${chunk}`);
-            if(!chunk.toString().startsWith('data:')) return;
-            const chunkObj = JSON.parse(chunk.toString().split("data: ")[1]);
-            if (chunkObj.event != 'message') {
-                console.log('Not a message, skip.');
+        let buffer = '';
+
+stream.on('data', (chunk) => {
+    console.log('Received chunk:', chunk.toString());
+
+    buffer += chunk.toString();
+    let lines = buffer.split('\n');
+
+    for (let i = 0; i < lines.length - 1; i++) {
+        let line = lines[i].trim();
+        if (!line.startsWith('data:')) continue;
+        line = line.slice(5).trim();
+
+        let chunkObj;
+        try {
+            chunkObj = JSON.parse(line);
+        } catch (error) {
+            console.error("Error parsing chunk:", error);
+            continue;
+        }
+
+        if (chunkObj.event === 'message') {
+            if (chunkObj.message === '[DONE]') {
+                res.write("data: [DONE]\n\n");
+                res.end();
                 return;
             }
-            const chunkContent = chunkObj.answer;
-            const chunkId = chunkObj.conversation_id; 
-            const chunkCreate = chunkObj.created_at;
+            const chunkContent = JSON.parse(`"${chunkObj.answer}"`);
+            const chunkId = chunkObj.id;
+            const chunkCreated = chunkObj.created;
             res.write("data: " + JSON.stringify({
                 "id": chunkId,
                 "object": "chat.completion.chunk",
-                "created": chunkCreate,
+                "created": chunkCreated,
                 "model": data.model,
                 "choices": [
                     {
@@ -117,21 +138,53 @@ app.post('/v1/chat/completions', async (req, res) => {
                     }
                 ]
             }) + "\n\n");
-        })
-        stream.on('end', () => {
-            console.log('end event detected...')
-            res.write("data: [DONE]\n\n" );
+        } else if (chunkObj.event === 'agent_message') {
+            const chunkContent = chunkObj.answer;
+            const chunkId = `chatcmpl-${Date.now()}`;
+            const chunkCreated = chunkObj.created_at;
+            res.write("data: " + JSON.stringify({
+                "id": chunkId,
+                "object": "chat.completion.chunk",
+                "created": chunkCreated,
+                "model": data.model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {
+                            "content": chunkContent
+                        },
+                        "finish_reason": null
+                    }
+                ]
+            }) + "\n\n");
+        } else if (chunkObj.event === 'message_end') {
+            const chunkId = `chatcmpl-${Date.now()}`;
+            const chunkCreated = chunkObj.created_at;
+            res.write("data: " + JSON.stringify({
+                "id": chunkId,
+                "object": "chat.completion.chunk",
+                "created": chunkCreated,
+                "model": data.model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {},
+                        "finish_reason": "stop"
+                    }
+                ]
+            }) + "\n\n");
+            res.write("data: [DONE]\n\n");
             res.end();
-        })
-    } catch (err) {
-        console.log(err);
-        return res.status(500).json({
-            code: 500,
-            errmsg: 'Internal Server Error.'
-        })
+        } else {
+            console.log('Unhandled event:', chunkObj.event);
+        }
     }
 
+    buffer = lines[lines.length - 1];
+});
+    } catch (error) {
+        console.error("Error:", error);
+    }
 })
-
 
 app.listen(process.env.PORT || 3000);
