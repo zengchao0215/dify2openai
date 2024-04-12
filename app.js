@@ -1,191 +1,209 @@
-import express from 'express';
-import bodyParser from 'body-parser';
-import dotenv from 'dotenv';
-import fetch from 'node-fetch';
+import express from "express";
+import bodyParser from "body-parser";
+import dotenv from "dotenv";
+import fetch from "node-fetch";
 dotenv.config();
 
-
-if (!process.env.DIFY_API_URL) 
-  throw new Error('DIFY API URL is required.');
-
+if (!process.env.DIFY_API_URL) throw new Error("DIFY API URL is required.");
 
 const app = express();
 app.use(bodyParser.json());
 
+app.all("/*", (req, res, next) => {
+  console.log(`--- ${new Date()} ---`);
+  console.log(`[Request Body] ${JSON.stringify(req.body || {})}`);
+  console.log(`[Request Header] ${JSON.stringify(req.headers)}`);
+  console.log(`[Request Method] ${req.method}`);
+  next();
+});
 
-app.all('/*', (req, res, next) => {
-    console.log(`--- ${new Date()} ---`);
-    console.log(`[Request Body] ${JSON.stringify(req.body || {})}`);
-    console.log(`[Request Header] ${JSON.stringify(req.headers)}`);
-    console.log(`[Request Method] ${req.method}`);
-    next();
-})
-
-
-app.post('/v1/chat/completions', async (req, res) => {
-    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
-    // const jsonFunc = res.json;
-    // res.json = (d) => {
-    //     console.log(`[Return Json] ${JSON.stringify(d)}`);
-    //     jsonFunc(d);
-    // }
-    if (!authHeader) {
-        return res.status(401).json({
-            code: 401,
-            errmsg: 'Unauthorized.'
-        })
+app.post("/v1/chat/completions", async (req, res) => {
+  const authHeader =
+    req.headers["authorization"] || req.headers["Authorization"];
+  if (!authHeader) {
+    return res.status(401).json({
+      code: 401,
+      errmsg: "Unauthorized.",
+    });
+  } else {
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({
+        code: 401,
+        errmsg: "Unauthorized.",
+      });
     }
-    else
-    {
-        const token = authHeader.split(' ')[1];
-        if (!token) {
-            return res.status(401).json({
-                code: 401,
-                errmsg: 'Unauthorized.'
-            })
-        }
-    }
-    try {
-        // 由于dify采用conversation_id模式
-        // 暂不支持连续对话 直接提取最后一句
-        const data = req.body;
-        const queryString = data.messages[data.messages.length-1].content;
-        // const response = await axios({
-        //     method: 'POST',
-        //     url: process.env.DIFY_API_URL + '/chat-messages',
-        //     headers: {
-        //         'Content-Type': 'application/json',
-        //         'Authorization': `Bearer ${authHeader.split(' ')[1]}`
-        //     },
-        //     data: {
-        //         'inputs': {},
-        //         'query': queryString,
-        //         'response_mode': 'streaming',
-        //         'conversation_id': '',
-        //         'user': 'apiuser'
-        //     },
-        //     responseType: 'stream',
-        //     decompress: false
-        // });
-        // console.log(response.data);
-        const resp = await fetch(process.env.DIFY_API_URL + '/chat-messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authHeader.split(' ')[1]}`
+  }
+  try {
+    // 由于dify采用conversation_id模式
+    // 暂不支持连续对话 直接提取最后一句
+    const data = req.body;
+    const queryString = data.messages[data.messages.length - 1].content;
+    const stream = data.stream !== undefined ? data.stream : false;
+    const responseMode = stream ? 'streaming' : 'blocking';
+    const resp = await fetch(process.env.DIFY_API_URL + "/chat-messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authHeader.split(" ")[1]}`,
+      },
+      body: JSON.stringify({
+        inputs: {},
+        query: queryString,
+        response_mode: responseMode,
+        conversation_id: "",
+        user: "apiuser",
+      }),
+    });
+    console.log("Received response from DIFY API with status:", resp.status);
+    if (responseMode === "blocking") {
+      const result = await resp.json();
+      res.json({
+        id: result.message_id,
+        object: "chat.completion",
+        created: result.created_at,
+        model: data.model,
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: result.answer,
             },
-            body: JSON.stringify({
-                'inputs': {},
-                'query': queryString,
-                'response_mode': 'streaming',
-                'conversation_id': '',
-                'user': 'apiuser'
-            })
-        });
-        console.log('Received response from DIFY API with status:', resp.status);
+            finish_reason: "stop",
+          },
+        ],
+        usage: {
+          prompt_tokens: result.metadata.usage.prompt_tokens,
+          completion_tokens: result.metadata.usage.completion_tokens,
+          total_tokens: result.metadata.usage.total_tokens,
+        },
+      });
+    } else {
+      res.setHeader("Content-Type", "text/event-stream");
+      const stream = resp.body;
+      let buffer = "";
 
-        res.setHeader('Content-Type', 'text/event-stream');
-        /*
-           --- DOESN'T WORK ---
-           resp.body.pipe(res);
-           res.write('[DONE]');
-           res.end();
-           --------------------
-        */
-        const stream = resp.body;
-        let buffer = '';
+      stream.on("data", (chunk) => {
 
-stream.on('data', (chunk) => {
-    console.log('Received chunk:', chunk.toString());
+        buffer += chunk.toString();
+        let lines = buffer.split("\n");
 
-    buffer += chunk.toString();
-    let lines = buffer.split('\n');
-
-    for (let i = 0; i < lines.length - 1; i++) {
-        let line = lines[i].trim();
-        if (!line.startsWith('data:')) continue;
-        line = line.slice(5).trim();
-
-        let chunkObj;
-        try {
-            chunkObj = JSON.parse(line);
-        } catch (error) {
-            console.error("Error parsing chunk:", error);
+        for (let i = 0; i < lines.length - 1; i++) {
+          let line = lines[i].trim();
+          if (line === 'ping') {
+            console.log('Received ping message');
             continue;
         }
 
-        if (chunkObj.event === 'message') {
-            if (chunkObj.message === '[DONE]') {
-                res.write("data: [DONE]\n\n");
-                res.end();
-                return;
+        if (!line.startsWith('data:')) continue;
+        line = line.slice(5).trim();
+          let chunkObj;
+          try {
+            if (line.startsWith('{')) {
+                chunkObj = JSON.parse(line);
+            } else {
+                console.warn('Received non-JSON data:', line);
+                continue;
             }
-            const chunkContent = JSON.parse(`"${chunkObj.answer.replace(/[\u0000-\u001F\u007F-\u009F]/g, "")}"`);
+        } catch (error) {
+            console.error('Error parsing chunk:', error);
+            continue;
+        }
+
+          if (chunkObj.event === "message") {
+            if (chunkObj.message === "[DONE]") {
+              res.write("data: [DONE]\n\n");
+              res.end();
+              return;
+            }
+            const chunkContent = JSON.parse(
+              `"${chunkObj.answer.replace(
+                /[\u0000-\u001F\u007F-\u009F]/g,
+                ""
+              )}"`
+            );
             const chunkId = chunkObj.id;
             const chunkCreated = chunkObj.created;
-            res.write("data: " + JSON.stringify({
-                "id": chunkId,
-                "object": "chat.completion.chunk",
-                "created": chunkCreated,
-                "model": data.model,
-                "choices": [
+            res.write(
+              "data: " +
+                JSON.stringify({
+                  id: chunkId,
+                  object: "chat.completion.chunk",
+                  created: chunkCreated,
+                  model: data.model,
+                  choices: [
                     {
-                        "index": 0,
-                        "delta": {
-                            "content": chunkContent
-                        },
-                        "finish_reason": null
-                    }
-                ]
-            }) + "\n\n");
-        } else if (chunkObj.event === 'agent_message') {
+                      index: 0,
+                      delta: {
+                        content: chunkContent,
+                      },
+                      finish_reason: null,
+                    },
+                  ],
+                }) +
+                "\n\n"
+            );
+          } else if (chunkObj.event === "agent_message") {
             const chunkContent = chunkObj.answer;
             const chunkId = `chatcmpl-${Date.now()}`;
             const chunkCreated = chunkObj.created_at;
-            res.write("data: " + JSON.stringify({
-                "id": chunkId,
-                "object": "chat.completion.chunk",
-                "created": chunkCreated,
-                "model": data.model,
-                "choices": [
+            res.write(
+              "data: " +
+                JSON.stringify({
+                  id: chunkId,
+                  object: "chat.completion.chunk",
+                  created: chunkCreated,
+                  model: data.model,
+                  choices: [
                     {
-                        "index": 0,
-                        "delta": {
-                            "content": chunkContent
-                        },
-                        "finish_reason": null
-                    }
-                ]
-            }) + "\n\n");
-        } else if (chunkObj.event === 'message_end') {
+                      index: 0,
+                      delta: {
+                        content: chunkContent,
+                      },
+                      finish_reason: null,
+                    },
+                  ],
+                }) +
+                "\n\n"
+            );
+          } else if (chunkObj.event === "message_end") {
             const chunkId = `chatcmpl-${Date.now()}`;
             const chunkCreated = chunkObj.created_at;
-            res.write("data: " + JSON.stringify({
-                "id": chunkId,
-                "object": "chat.completion.chunk",
-                "created": chunkCreated,
-                "model": data.model,
-                "choices": [
+            res.write(
+              "data: " +
+                JSON.stringify({
+                  id: chunkId,
+                  object: "chat.completion.chunk",
+                  created: chunkCreated,
+                  model: data.model,
+                  choices: [
                     {
-                        "index": 0,
-                        "delta": {},
-                        "finish_reason": "stop"
-                    }
-                ]
-            }) + "\n\n");
+                      index: 0,
+                      delta: {},
+                      finish_reason: "stop",
+                    },
+                  ],
+                }) +
+                "\n\n"
+            );
             res.write("data: [DONE]\n\n");
             res.end();
-        } else if (chunkObj.event === 'agent_thought') {
-} else if (chunkObj.event === 'error') {
-    console.error(`Error: ${chunkObj.code}, ${chunkObj.message}`);
-}
-    }
+          } else if (chunkObj.event === "agent_thought") {
+          } else if (chunkObj.event === "error") {
+            console.error(`Error: ${chunkObj.code}, ${chunkObj.message}`);
+            res.status(500).write(`data: ${JSON.stringify({ error: chunkObj.message })}\n\n`);
+            res.write("data: [DONE]\n\n");
+            res.end();
+          }
+        }
 
-    buffer = lines[lines.length - 1];
-});
-    } catch (error) {
-        console.error("Error:", error);
+        buffer = lines[lines.length - 1];
+      });
     }
-})
+  } catch (error) {
+    console.error("Error:", error);
+  }
+});
 
 app.listen(process.env.PORT || 3000);

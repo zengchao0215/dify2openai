@@ -8,7 +8,7 @@
 Turn dify api into OpenAI
 
 ## Deployment
-1. Change the environment variable
+1. Change the environment variable on .env
 ```
 DIFY_API_URL=https://api.dify.ai/v1
 ```
@@ -25,8 +25,11 @@ npm start
 
 ## TODO
 - [ ] More descriptions on readme
-- [ ] Support blocking
 - [ ] Support workflow
+- [ ] Support image
+- [ ] Support audio-to-text
+- [ ] Support text-to-audio
+- [x] Support blocking
 - [x] Support tools
 - [x] Support streaming
 - [x] Support Agent bot
