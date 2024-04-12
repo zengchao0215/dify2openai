@@ -8,6 +8,13 @@
 Turn dify api into OpenAI
 
 ## Deployment
+### Vercel
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/fatwang2/dify2openai&env=DIFY_API_URL&envDescription=https://api.dify.ai/v1)
+
+### Zeabur
+[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/92RLEZ?referralCode=fatwang2)
+
+### Local
 1. Change the environment variable on .env
 ```
 DIFY_API_URL=https://api.dify.ai/v1
@@ -29,6 +36,9 @@ npm start
 - [ ] Support image
 - [ ] Support audio-to-text
 - [ ] Support text-to-audio
+- [ ] Support Docker
+- [x] Support Zeabur
+- [x] Support Vercel
 - [x] Support blocking
 - [x] Support tools
 - [x] Support streaming
