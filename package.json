@@ -1,7 +1,7 @@
 {
-  "name": "dify2openaiapi",
+  "name": "dify2openai",
   "version": "1.0.0",
-  "description": "",
+  "description": "turn dify api into openai",
   "main": "app.js",
   "type": "module",
   "scripts": {
@@ -9,8 +9,8 @@
     "start": "node app.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "fatwang2",
+  "license": "MIT",
   "dependencies": {
     "axios": "^1.5.0",
     "body-parser": "^1.20.2",
