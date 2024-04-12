@@ -1,0 +1,19 @@
+{
+    "version": 1,
+    "builds": [
+      {
+        "src": "app.js",
+        "use": "@vercel/node"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/v1/chat/completions",
+        "dest": "/app.js",
+        "methods": ["POST"]
+      }
+    ],
+    "env": {
+      "DIFY_API_URL": "@dify_api_url"
+    }
+  }
