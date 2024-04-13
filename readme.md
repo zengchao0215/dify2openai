@@ -59,7 +59,8 @@ console.log(data);
 
 ## Roadmap
 **Coming Soon**
-*   Workflow integration
+*   Workflow Bot
+*   Completion Bot
 *   Image support
 *   Audio-to-text
 *   Text-to-audio
