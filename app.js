@@ -232,10 +232,12 @@ app.post("/v1/chat/completions", async (req, res) => {
                   role: "assistant",
                   content: result.trim(),
                 },
+                logprobs: null,
                 finish_reason: "stop",
               },
             ],
             usage: usageData,
+            system_fingerprint: "fp_2f57f81c11",
           });
         } else {
           res.status(500).json({ error: "Unexpected end of stream." });
