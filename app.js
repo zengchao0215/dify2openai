@@ -223,7 +223,7 @@ app.post("/v1/chat/completions", async (req, res) => {
           res.json({
             id: `chatcmpl-${Date.now()}`,
             object: "chat.completion",
-            created: Date.now(),
+            created: Math.floor(Date.now() / 1000),
             model: data.model,
             choices: [
               {
