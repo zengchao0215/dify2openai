@@ -106,7 +106,7 @@ app.post("/v1/chat/completions", async (req, res) => {
                       {
                         index: 0,
                         delta: {
-                          content: escapedContent,
+                          content: chunkContent,
                         },
                         finish_reason: null,
                       },
