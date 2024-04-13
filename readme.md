@@ -60,7 +60,7 @@ console.log(data);
 ## Roadmap
 **Coming Soon**
 *   Workflow Bot
-*   Completion Bot
+*   Variables support
 *   Image support
 *   Audio-to-text
 *   Text-to-audio
