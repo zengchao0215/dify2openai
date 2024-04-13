@@ -9,14 +9,6 @@ if (!process.env.DIFY_API_URL) throw new Error("DIFY API URL is required.");
 const app = express();
 app.use(bodyParser.json());
 
-app.all("/*", (req, res, next) => {
-  console.log(`--- ${new Date()} ---`);
-  console.log(`[Request Body] ${JSON.stringify(req.body || {})}`);
-  console.log(`[Request Header] ${JSON.stringify(req.headers)}`);
-  console.log(`[Request Method] ${req.method}`);
-  next();
-});
-
 app.post("/v1/chat/completions", async (req, res) => {
   const authHeader =
     req.headers["authorization"] || req.headers["Authorization"];
@@ -35,12 +27,9 @@ app.post("/v1/chat/completions", async (req, res) => {
     }
   }
   try {
-    // 由于dify采用conversation_id模式
-    // 暂不支持连续对话 直接提取最后一句
     const data = req.body;
     const queryString = data.messages[data.messages.length - 1].content;
     const stream = data.stream !== undefined ? data.stream : false;
-    const responseMode = stream ? 'streaming' : 'blocking';
     const resp = await fetch(process.env.DIFY_API_URL + "/chat-messages", {
       method: "POST",
       headers: {
@@ -50,81 +39,47 @@ app.post("/v1/chat/completions", async (req, res) => {
       body: JSON.stringify({
         inputs: {},
         query: queryString,
-        response_mode: responseMode,
+        response_mode: "streaming",
         conversation_id: "",
         user: "apiuser",
       }),
     });
     console.log("Received response from DIFY API with status:", resp.status);
-    if (responseMode === "blocking") {
-      const result = await resp.json();
-      res.json({
-        id: result.message_id,
-        object: "chat.completion",
-        created: result.created_at,
-        model: data.model,
-        choices: [
-          {
-            index: 0,
-            message: {
-              role: "assistant",
-              content: result.answer,
-            },
-            finish_reason: "stop",
-          },
-        ],
-        usage: {
-          prompt_tokens: result.metadata.usage.prompt_tokens,
-          completion_tokens: result.metadata.usage.completion_tokens,
-          total_tokens: result.metadata.usage.total_tokens,
-        },
-      });
-    } else {
+    if (stream) {
       res.setHeader("Content-Type", "text/event-stream");
       const stream = resp.body;
       let buffer = "";
 
       stream.on("data", (chunk) => {
-
         buffer += chunk.toString();
         let lines = buffer.split("\n");
 
         for (let i = 0; i < lines.length - 1; i++) {
           let line = lines[i].trim();
-          if (line === 'ping') {
-            console.log('Received ping message');
-            continue;
-        }
 
-        if (!line.startsWith('data:')) continue;
-        line = line.slice(5).trim();
+          if (!line.startsWith("data:")) continue;
+          line = line.slice(5).trim();
           let chunkObj;
           try {
-            if (line.startsWith('{')) {
-                chunkObj = JSON.parse(line);
+            if (line.startsWith("{")) {
+              chunkObj = JSON.parse(line);
             } else {
-                console.warn('Received non-JSON data:', line);
-                continue;
+              continue;
             }
-        } catch (error) {
-            console.error('Error parsing chunk:', error);
+          } catch (error) {
+            console.error("Error parsing chunk:", error);
             continue;
-        }
+          }
 
           if (chunkObj.event === "message") {
-            if (chunkObj.message === "[DONE]") {
-              res.write("data: [DONE]\n\n");
-              res.end();
-              return;
-            }
             const chunkContent = JSON.parse(
               `"${chunkObj.answer.replace(
                 /[\u0000-\u001F\u007F-\u009F]/g,
                 ""
               )}"`
             );
-            const chunkId = chunkObj.id;
-            const chunkCreated = chunkObj.created;
+            const chunkId = `chatcmpl-${Date.now()}`;
+            const chunkCreated = chunkObj.created_at;
             res.write(
               "data: " +
                 JSON.stringify({
@@ -190,15 +145,94 @@ app.post("/v1/chat/completions", async (req, res) => {
             res.write("data: [DONE]\n\n");
             res.end();
           } else if (chunkObj.event === "agent_thought") {
+          } else if (chunkObj.event === "ping") {
           } else if (chunkObj.event === "error") {
             console.error(`Error: ${chunkObj.code}, ${chunkObj.message}`);
-            res.status(500).write(`data: ${JSON.stringify({ error: chunkObj.message })}\n\n`);
+            res
+              .status(500)
+              .write(
+                `data: ${JSON.stringify({ error: chunkObj.message })}\n\n`
+              );
             res.write("data: [DONE]\n\n");
             res.end();
           }
         }
 
         buffer = lines[lines.length - 1];
+      });
+    } else {
+      let result = "";
+      let hasError = false;
+      let messageEnded = false;
+      let buffer = "";
+
+      const stream = resp.body;
+      stream.on("data", (chunk) => {
+        buffer += chunk.toString();
+        let lines = buffer.split("\n");
+
+        for (let i = 0; i < lines.length - 1; i++) {
+          const line = lines[i].trim();
+          if (line === "") continue;
+          let chunkObj;
+          try {
+            const cleanedLine = line.replace(/^data: /, "").trim();
+            if (cleanedLine.startsWith("{") && cleanedLine.endsWith("}")) {
+              chunkObj = JSON.parse(cleanedLine);
+            } else {
+              continue;
+            }
+          } catch (error) {
+            console.error("Error parsing JSON:", error);
+            continue;
+          }
+
+          if (
+            chunkObj.event === "message" ||
+            chunkObj.event === "agent_message"
+          ) {
+            result += chunkObj.answer.trim();
+          } else if (chunkObj.event === "message_end") {
+            messageEnded = true;
+          } else if (chunkObj.event === "agent_thought") {
+          } else if (chunkObj.event === "ping") {
+          } else if (chunkObj.event === "error") {
+            console.error(`Error: ${chunkObj.code}, ${chunkObj.message}`);
+            hasError = true;
+            break;
+          } else {
+            console.warn(`Unknown event type: ${chunkObj.event}`);
+          }
+        }
+
+        buffer = lines[lines.length - 1];
+      });
+
+      stream.on("end", () => {
+        if (hasError) {
+          res
+            .status(500)
+            .json({ error: "An error occurred while processing the request." });
+        } else if (messageEnded) {
+          res.json({
+            id: `chatcmpl-${Date.now()}`,
+            object: "chat.completion",
+            created: Date.now(),
+            model: data.model,
+            choices: [
+              {
+                index: 0,
+                message: {
+                  role: "assistant",
+                  content: result.trim(),
+                },
+                finish_reason: "stop",
+              },
+            ],
+          });
+        } else {
+          res.status(500).json({ error: "Unexpected end of stream." });
+        }
       });
     }
   } catch (error) {
