@@ -227,7 +227,7 @@ app.post("/v1/chat/completions", async (req, res) => {
             .status(500)
             .json({ error: "An error occurred while processing the request." });
         } else if (messageEnded) {
-          res.json({
+          const formattedResponse = {
             id: `chatcmpl-${generateId()}`,
             object: "chat.completion",
             created: Math.floor(Date.now() / 1000),
@@ -245,7 +245,10 @@ app.post("/v1/chat/completions", async (req, res) => {
             ],
             usage: usageData,
             system_fingerprint: "fp_2f57f81c11",
-          });
+          };
+          const jsonResponse = JSON.stringify(formattedResponse, null, 2);
+          res.set("Content-Type", "application/json");
+          res.send(jsonResponse);
         } else {
           res.status(500).json({ error: "Unexpected end of stream." });
         }
