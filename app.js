@@ -203,9 +203,9 @@ app.post("/v1/chat/completions", async (req, res) => {
           } else if (chunkObj.event === "message_end") {
             messageEnded = true;
             usageData = {
-              prompt_tokens: chunkObj.metadata.usage.prompt_tokens,
-              completion_tokens: chunkObj.metadata.usage.completion_tokens,
-              total_tokens: chunkObj.metadata.usage.total_tokens,
+              prompt_tokens: chunkObj.metadata.usage.prompt_tokens || 100,
+              completion_tokens: chunkObj.metadata.usage.completion_tokens || 10,
+              total_tokens: chunkObj.metadata.usage.total_tokens || 110,
             };
           } else if (chunkObj.event === "agent_thought") {
           } else if (chunkObj.event === "ping") {
