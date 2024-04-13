@@ -53,6 +53,8 @@ app.post("/v1/chat/completions", async (req, res) => {
         response_mode: "streaming",
         conversation_id: "",
         user: "apiuser",
+        auto_generate_name: false
+
       }),
     });
     console.log("Received response from DIFY API with status:", resp.status);
