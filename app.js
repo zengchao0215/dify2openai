@@ -162,6 +162,7 @@ app.post("/v1/chat/completions", async (req, res) => {
       });
     } else {
       let result = "";
+      let usageData = "";
       let hasError = false;
       let messageEnded = false;
       let buffer = "";
@@ -194,6 +195,11 @@ app.post("/v1/chat/completions", async (req, res) => {
             result += chunkObj.answer.trim();
           } else if (chunkObj.event === "message_end") {
             messageEnded = true;
+            usageData = {
+              prompt_tokens: chunkObj.metadata.usage.prompt_tokens,
+              completion_tokens: chunkObj.metadata.usage.completion_tokens,
+              total_tokens: chunkObj.metadata.usage.total_tokens,
+            };
           } else if (chunkObj.event === "agent_thought") {
           } else if (chunkObj.event === "ping") {
           } else if (chunkObj.event === "error") {
@@ -229,6 +235,7 @@ app.post("/v1/chat/completions", async (req, res) => {
                 finish_reason: "stop",
               },
             ],
+            usage: usageData,
           });
         } else {
           res.status(500).json({ error: "Unexpected end of stream." });
