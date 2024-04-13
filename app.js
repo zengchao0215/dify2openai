@@ -5,7 +5,14 @@ import fetch from "node-fetch";
 dotenv.config();
 
 if (!process.env.DIFY_API_URL) throw new Error("DIFY API URL is required.");
-
+function generateId() {
+  let result = '';
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  for (let i = 0; i < 29; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
 const app = express();
 app.use(bodyParser.json());
 
@@ -221,7 +228,7 @@ app.post("/v1/chat/completions", async (req, res) => {
             .json({ error: "An error occurred while processing the request." });
         } else if (messageEnded) {
           res.json({
-            id: `chatcmpl-${Date.now()}`,
+            id: `chatcmpl-${generateId()}`,
             object: "chat.completion",
             created: Math.floor(Date.now() / 1000),
             model: data.model,
