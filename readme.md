@@ -11,11 +11,14 @@ This project converts the Dify API to the OpenAI API format, giving you access t
 - Support Chat bot
 
 ## Deployment
+### Zeabur
+[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/92RLEZ?referralCode=fatwang2)
+
 ### Vercel
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/fatwang2/dify2openai&env=DIFY_API_URL&envDescription=https://api.dify.ai/v1)
 
-### Zeabur
-[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/92RLEZ?referralCode=fatwang2)
+**Note:** Vercel's serverless functions have a 10-second timeout limit.
+
 
 ### Local Deployment
 1. Set the environment variable in the .env file
