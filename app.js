@@ -6,8 +6,9 @@ dotenv.config();
 
 if (!process.env.DIFY_API_URL) throw new Error("DIFY API URL is required.");
 function generateId() {
-  let result = '';
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = "";
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   for (let i = 0; i < 29; i++) {
     result += characters.charAt(Math.floor(Math.random() * characters.length));
   }
@@ -35,7 +36,10 @@ app.post("/v1/chat/completions", async (req, res) => {
   }
   try {
     const data = req.body;
-    const queryString = data.messages[data.messages.length - 1].content;
+    const messages = data.messages;
+    const queryString = messages
+      .map((message) => `${message.role}: ${message.content}`)
+      .join('\n');
     const stream = data.stream !== undefined ? data.stream : false;
     const resp = await fetch(process.env.DIFY_API_URL + "/chat-messages", {
       method: "POST",
@@ -56,6 +60,7 @@ app.post("/v1/chat/completions", async (req, res) => {
       res.setHeader("Content-Type", "text/event-stream");
       const stream = resp.body;
       let buffer = "";
+      let isFirstChunk = true;
 
       stream.on("data", (chunk) => {
         buffer += chunk.toString();
@@ -79,56 +84,65 @@ app.post("/v1/chat/completions", async (req, res) => {
           }
 
           if (chunkObj.event === "message") {
-            const chunkContent = JSON.parse(
-              `"${chunkObj.answer.replace(
-                /[\u0000-\u001F\u007F-\u009F]/g,
-                ""
-              )}"`
-            );
-            const chunkId = `chatcmpl-${Date.now()}`;
-            const chunkCreated = chunkObj.created_at;
-            res.write(
-              "data: " +
-                JSON.stringify({
-                  id: chunkId,
-                  object: "chat.completion.chunk",
-                  created: chunkCreated,
-                  model: data.model,
-                  choices: [
-                    {
-                      index: 0,
-                      delta: {
-                        content: chunkContent,
+            let chunkContent = chunkObj.answer;
+
+            if (isFirstChunk) {
+              chunkContent = chunkContent.trimStart();
+              isFirstChunk = false;
+            }
+            if (chunkContent !== "") {
+              const chunkId = `chatcmpl-${Date.now()}`;
+              const chunkCreated = chunkObj.created_at;
+              res.write(
+                "data: " +
+                  JSON.stringify({
+                    id: chunkId,
+                    object: "chat.completion.chunk",
+                    created: chunkCreated,
+                    model: data.model,
+                    choices: [
+                      {
+                        index: 0,
+                        delta: {
+                          content: escapedContent,
+                        },
+                        finish_reason: null,
                       },
-                      finish_reason: null,
-                    },
-                  ],
-                }) +
-                "\n\n"
-            );
+                    ],
+                  }) +
+                  "\n\n"
+              );
+            }
           } else if (chunkObj.event === "agent_message") {
-            const chunkContent = chunkObj.answer;
-            const chunkId = `chatcmpl-${Date.now()}`;
-            const chunkCreated = chunkObj.created_at;
-            res.write(
-              "data: " +
-                JSON.stringify({
-                  id: chunkId,
-                  object: "chat.completion.chunk",
-                  created: chunkCreated,
-                  model: data.model,
-                  choices: [
-                    {
-                      index: 0,
-                      delta: {
-                        content: chunkContent,
+            let chunkContent = chunkObj.answer;
+
+            if (isFirstChunk) {
+              chunkContent = chunkContent.trimStart();
+              isFirstChunk = false;
+            }
+            if (chunkContent !== "") {
+              const chunkId = `chatcmpl-${Date.now()}`;
+              const chunkCreated = chunkObj.created_at;
+              res.write(
+                "data: " +
+                  JSON.stringify({
+                    id: chunkId,
+                    object: "chat.completion.chunk",
+                    created: chunkCreated,
+                    model: data.model,
+                    choices: [
+                      {
+                        index: 0,
+                        delta: {
+                          content: chunkContent,
+                        },
+                        finish_reason: null,
                       },
-                      finish_reason: null,
-                    },
-                  ],
-                }) +
-                "\n\n"
-            );
+                    ],
+                  }) +
+                  "\n\n"
+              );
+            }
           } else if (chunkObj.event === "message_end") {
             const chunkId = `chatcmpl-${Date.now()}`;
             const chunkCreated = chunkObj.created_at;
@@ -204,7 +218,8 @@ app.post("/v1/chat/completions", async (req, res) => {
             messageEnded = true;
             usageData = {
               prompt_tokens: chunkObj.metadata.usage.prompt_tokens || 100,
-              completion_tokens: chunkObj.metadata.usage.completion_tokens || 10,
+              completion_tokens:
+                chunkObj.metadata.usage.completion_tokens || 10,
               total_tokens: chunkObj.metadata.usage.total_tokens || 110,
             };
           } else if (chunkObj.event === "agent_thought") {
