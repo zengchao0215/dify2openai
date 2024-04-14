@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import fetch from "node-fetch";
 dotenv.config();
 
+
+
 if (!process.env.DIFY_API_URL) throw new Error("DIFY API URL is required.");
 function generateId() {
   let result = "";
@@ -16,6 +18,38 @@ function generateId() {
 }
 const app = express();
 app.use(bodyParser.json());
+const botType = process.env.BOT_TYPE || 'Chat';
+const inputVariable = process.env.INPUT_VARIABLE || '';
+const outputVariable = process.env.OUTPUT_VARIABLE || '';
+
+let apiPath;
+switch (botType) {
+  case 'Chat':
+    apiPath = '/chat-messages';
+    break;
+  case 'Completion':
+    apiPath = '/completion-messages';
+    break;
+  case 'Workflow':
+    apiPath = '/workflows/run';
+    break;
+  default:
+    throw new Error('Invalid bot type in the environment variable.');
+}
+
+app.get('/', (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <title>DIFY2OPENAI</title>
+      </head>
+      <body>
+        <h1>Dify2OpenAI</h1>
+        <p>Congratulations! Your project has been successfully deployed.</p>
+      </body>
+    </html>
+  `);
+});
 
 app.post("/v1/chat/completions", async (req, res) => {
   const authHeader =
@@ -37,32 +71,50 @@ app.post("/v1/chat/completions", async (req, res) => {
   try {
     const data = req.body;
     const messages = data.messages;
-    const queryString = messages
-      .map((message) => `${message.role}: ${message.content}`)
-      .join('\n');
+    let queryString;
+    if (botType === 'Chat') {
+      const lastMessage = messages[messages.length - 1];
+      queryString = `here is our talk history:\n'''\n${messages
+        .slice(0, -1) 
+        .map((message) => `${message.role}: ${message.content}`)
+        .join('\n')}\n'''\n\nhere is my question:\n${lastMessage.content}`;
+    } else if (botType === 'Completion' || botType === 'Workflow') {
+      queryString = messages[messages.length - 1].content;
+    }
     const stream = data.stream !== undefined ? data.stream : false;
-    const resp = await fetch(process.env.DIFY_API_URL + "/chat-messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authHeader.split(" ")[1]}`,
-      },
-      body: JSON.stringify({
-        inputs: {},
+    let requestBody;
+    if (inputVariable) {
+      requestBody = {
+        inputs: { [inputVariable]: queryString },
+        response_mode: "streaming",
+        conversation_id: "",
+        user: "apiuser",
+        auto_generate_name: false
+      };
+    } else {
+      requestBody = {
+        "inputs": {},
         query: queryString,
         response_mode: "streaming",
         conversation_id: "",
         user: "apiuser",
         auto_generate_name: false
-
-      }),
+      };
+    }
+    const resp = await fetch(process.env.DIFY_API_URL + apiPath, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authHeader.split(" ")[1]}`,
+      },
+      body: JSON.stringify(requestBody),
     });
-    console.log("Received response from DIFY API with status:", resp.status);
     if (stream) {
       res.setHeader("Content-Type", "text/event-stream");
       const stream = resp.body;
       let buffer = "";
       let isFirstChunk = true;
+      let workflowFinished = false;
 
       stream.on("data", (chunk) => {
         buffer += chunk.toString();
@@ -145,7 +197,56 @@ app.post("/v1/chat/completions", async (req, res) => {
                   "\n\n"
               );
             }
-          } else if (chunkObj.event === "message_end") {
+          } else if (chunkObj.event === "workflow_finished") {
+            workflowFinished = true;
+            const outputData = chunkObj.data.outputs;
+            let outputContent;
+            if (outputVariable) {
+              outputContent = outputData[outputVariable];
+            } else {
+              outputContent = outputData;
+            }
+            const chunkId = `chatcmpl-${Date.now()}`;
+            const chunkCreated = chunkObj.data.finished_at;
+            res.write(
+              "data: " +
+                JSON.stringify({
+                  id: chunkId,
+                  object: "chat.completion.chunk",
+                  created: chunkCreated,
+                  model: data.model,
+                  choices: [
+                    {
+                      index: 0,
+                      delta: {
+                        content: outputContent,
+                      },
+                      finish_reason: "null",
+                    },
+                  ],
+                }) +
+                "\n\n"
+            );
+            res.write(
+              "data: " +
+                JSON.stringify({
+                  id: chunkId,
+                  object: "chat.completion.chunk",
+                  created: chunkCreated,
+                  model: data.model,
+                  choices: [
+                    {
+                      index: 0,
+                      delta: {},
+                      finish_reason: "stop",
+                    },
+                  ],
+                }) +
+                "\n\n"
+            );
+            res.write("data: [DONE]\n\n");
+            res.end();
+          }else if (chunkObj.event === "message_end") {
             const chunkId = `chatcmpl-${Date.now()}`;
             const chunkCreated = chunkObj.created_at;
             res.write(
@@ -215,7 +316,7 @@ app.post("/v1/chat/completions", async (req, res) => {
             chunkObj.event === "message" ||
             chunkObj.event === "agent_message"
           ) {
-            result += chunkObj.answer.trim();
+            result += chunkObj.answer;
           } else if (chunkObj.event === "message_end") {
             messageEnded = true;
             usageData = {
@@ -230,9 +331,7 @@ app.post("/v1/chat/completions", async (req, res) => {
             console.error(`Error: ${chunkObj.code}, ${chunkObj.message}`);
             hasError = true;
             break;
-          } else {
-            console.warn(`Unknown event type: ${chunkObj.event}`);
-          }
+          } 
         }
 
         buffer = lines[lines.length - 1];

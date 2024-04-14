@@ -7,8 +7,7 @@ This project converts the Dify API to the OpenAI API format, giving you access t
 ## Features
 - Convert Dify API into an OpenAI API
 - Support streaming and blocking
-- Support Agent bots API on dify
-- Support Chat bots API on dify
+- Support Chat, Completion, Agent and Workflow bots API on dify
 
 ## Deployment
 ### Zeabur
@@ -56,17 +55,25 @@ const response = await fetch('http://localhost:3000/v1/chat/completions', {
 const data = await response.json();
 console.log(data);
 ```
+## Environment Variable
+This project provides some additional configuration items set with environment variables:
 
+| Environment Variable | Required | Description                                                                                                                                                               | Example                                                                                                              |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `DIFY_API_URL`     | Yes      | Your Dify API if you self-host it                                                                                                                  | `https://api.dify.ai/v1`                                                                                                 |
+| `BOT_TYPE`     | Yes      | The type of your dify bots                                                                                                                  | `Chat,Completion,Workflow`                                                                                                 |
+| `INPUT_VARIABLE`     | No      | The name of input variable in your own dify workflow bot                                                                                                                  | `query,text`                                                                                                 |
+| `OUTPUT_VARIABLE`     | No      | The name of output variable in your own dify workflow bot                                                                                                                  | `text`                                                                                                 |
 ## Roadmap
 **Coming Soon**
-*   Workflow Bot
-*   Variables support
 *   Image support
 *   Audio-to-text
 *   Text-to-audio
 *   Docker support
 
 **Available Now**
+*   Workflow Bot
+*   Variables support
 *   Continuous dialogue
 *   Zeabur & Vercel deployment
 *   Streaming & Blocking
