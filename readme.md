@@ -1,4 +1,4 @@
-## DIFY2OPENAI
+## D2O
 **Use Dify on your favorite OpenAI client.**
 
 This project converts the Dify API to the OpenAI API format, giving you access to Dify's LLMs, knowledge base, tools, and workflows within your preferred OpenAI clients.
