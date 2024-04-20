@@ -290,6 +290,8 @@ app.post("/v1/chat/completions", async (req, res) => {
       let hasError = false;
       let messageEnded = false;
       let buffer = "";
+      let skipWorkflowFinished = false;
+
 
       const stream = resp.body;
       stream.on("data", (chunk) => {
@@ -317,6 +319,7 @@ app.post("/v1/chat/completions", async (req, res) => {
             chunkObj.event === "agent_message"
           ) {
             result += chunkObj.answer;
+            skipWorkflowFinished = true;
           } else if (chunkObj.event === "message_end") {
             messageEnded = true;
             usageData = {
@@ -324,6 +327,20 @@ app.post("/v1/chat/completions", async (req, res) => {
               completion_tokens:
                 chunkObj.metadata.usage.completion_tokens || 10,
               total_tokens: chunkObj.metadata.usage.total_tokens || 110,
+            };
+          } else if (chunkObj.event === "workflow_finished" && !skipWorkflowFinished) {
+            messageEnded = true;
+            const outputs = chunkObj.data.outputs;
+            if (outputVariable) {
+              result = outputs[outputVariable];
+            } else {
+              result = outputs;
+            }
+            result = String(result);
+            usageData = {
+              prompt_tokens: chunkObj.metadata?.usage?.prompt_tokens || 100,
+              completion_tokens: chunkObj.metadata?.usage?.completion_tokens || 10,
+              total_tokens: chunkObj.data.total_tokens || 110,
             };
           } else if (chunkObj.event === "agent_thought") {
           } else if (chunkObj.event === "ping") {
