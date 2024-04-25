@@ -36,7 +36,23 @@ switch (botType) {
   default:
     throw new Error('Invalid bot type in the environment variable.');
 }
+var corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization",
+  "Access-Control-Max-Age": "86400",
+};
 
+app.use((req, res, next) => {
+  res.set(corsHeaders);
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  console.log('Request Method:', req.method); 
+  console.log('Request Path:', req.path);
+  next();
+});
 app.get('/', (req, res) => {
   res.send(`
     <html>
