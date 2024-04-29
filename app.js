@@ -125,6 +125,9 @@ app.post("/v1/chat/completions", async (req, res) => {
       },
       body: JSON.stringify(requestBody),
     });
+
+    let isResponseEnded = false;
+
     if (stream) {
       res.setHeader("Content-Type", "text/event-stream");
       const stream = resp.body;
@@ -133,6 +136,7 @@ app.post("/v1/chat/completions", async (req, res) => {
       let workflowFinished = false;
 
       stream.on("data", (chunk) => {
+
         buffer += chunk.toString();
         let lines = buffer.split("\n");
 
@@ -163,6 +167,8 @@ app.post("/v1/chat/completions", async (req, res) => {
             if (chunkContent !== "") {
               const chunkId = `chatcmpl-${Date.now()}`;
               const chunkCreated = chunkObj.created_at;
+              
+              if (!isResponseEnded) {
               res.write(
                 "data: " +
                   JSON.stringify({
@@ -182,6 +188,8 @@ app.post("/v1/chat/completions", async (req, res) => {
                   }) +
                   "\n\n"
               );
+            }
+
             }
           } else if (chunkObj.event === "agent_message") {
             let chunkContent = chunkObj.answer;
@@ -193,6 +201,8 @@ app.post("/v1/chat/completions", async (req, res) => {
             if (chunkContent !== "") {
               const chunkId = `chatcmpl-${Date.now()}`;
               const chunkCreated = chunkObj.created_at;
+              
+              if (!isResponseEnded) {
               res.write(
                 "data: " +
                   JSON.stringify({
@@ -212,6 +222,7 @@ app.post("/v1/chat/completions", async (req, res) => {
                   }) +
                   "\n\n"
               );
+            }
             }
           } else if (chunkObj.event === "workflow_finished") {
             workflowFinished = true;
@@ -224,6 +235,7 @@ app.post("/v1/chat/completions", async (req, res) => {
             }
             const chunkId = `chatcmpl-${Date.now()}`;
             const chunkCreated = chunkObj.data.finished_at;
+            if (!isResponseEnded) {
             res.write(
               "data: " +
                 JSON.stringify({
@@ -243,6 +255,8 @@ app.post("/v1/chat/completions", async (req, res) => {
                 }) +
                 "\n\n"
             );
+          }
+            if (!isResponseEnded) {
             res.write(
               "data: " +
                 JSON.stringify({
@@ -260,11 +274,16 @@ app.post("/v1/chat/completions", async (req, res) => {
                 }) +
                 "\n\n"
             );
+          }
+            if (!isResponseEnded) {
             res.write("data: [DONE]\n\n");
+            }
             res.end();
+            isResponseEnded = true;
           }else if (chunkObj.event === "message_end") {
             const chunkId = `chatcmpl-${Date.now()}`;
             const chunkCreated = chunkObj.created_at;
+            if (!isResponseEnded) {
             res.write(
               "data: " +
                 JSON.stringify({
@@ -282,8 +301,13 @@ app.post("/v1/chat/completions", async (req, res) => {
                 }) +
                 "\n\n"
             );
+          }
+          if (!isResponseEnded) {
             res.write("data: [DONE]\n\n");
+          }
+
             res.end();
+            isResponseEnded = true;
           } else if (chunkObj.event === "agent_thought") {
           } else if (chunkObj.event === "ping") {
           } else if (chunkObj.event === "error") {
@@ -293,8 +317,13 @@ app.post("/v1/chat/completions", async (req, res) => {
               .write(
                 `data: ${JSON.stringify({ error: chunkObj.message })}\n\n`
               );
+              
+            if (!isResponseEnded) {
             res.write("data: [DONE]\n\n");
+            }
+
             res.end();
+            isResponseEnded = true;
           }
         }
 
