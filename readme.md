@@ -35,6 +35,34 @@ pnpm install
 pnpm start
 ```
 
+### Docker Deployment
+
+- If you are using Docker Desktop, you can run the following command to start the project:
+
+```bash
+docker run -d -name d2o \
+    --network bridge \
+    -p 3000:3000 \
+    -e DIFY_API_URL=https://api.dify.ai/v1 \
+    --restart always
+    moeceo/dify2openai:latest
+```
+
+- You can also use Docker Compose to deploy the project:
+```bash
+version: '3.5'
+services:
+  d2o:
+    container_name: d2o
+    image: moeceo/dify2openai:latest
+    network_mode: bridge
+    ports:
+      - "3000:3000"
+    restart: always
+    environment: 
+      - DIFY_API_URL=https://api.dify.ai/v1
+```
+
 ## Usage
 1. OpenAI Clients
 
