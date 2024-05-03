@@ -130,7 +130,6 @@ app.post("/v1/chat/completions", async (req, res) => {
       const stream = resp.body;
       let buffer = "";
       let isFirstChunk = true;
-      let workflowFinished = false;
 
       stream.on("data", (chunk) => {
         buffer += chunk.toString();
@@ -153,116 +152,42 @@ app.post("/v1/chat/completions", async (req, res) => {
             continue;
           }
 
-          if (chunkObj.event === "message") {
-            let chunkContent = chunkObj.answer;
-
-            if (isFirstChunk) {
-              chunkContent = chunkContent.trimStart();
-              isFirstChunk = false;
-            }
-            if (chunkContent !== "") {
-              const chunkId = `chatcmpl-${Date.now()}`;
-              const chunkCreated = chunkObj.created_at;
-              res.write(
-                "data: " +
-                  JSON.stringify({
-                    id: chunkId,
-                    object: "chat.completion.chunk",
-                    created: chunkCreated,
-                    model: data.model,
-                    choices: [
-                      {
-                        index: 0,
-                        delta: {
-                          content: chunkContent,
-                        },
-                        finish_reason: null,
-                      },
-                    ],
-                  }) +
-                  "\n\n"
-              );
-            }
-          } else if (chunkObj.event === "agent_message") {
-            let chunkContent = chunkObj.answer;
-
-            if (isFirstChunk) {
-              chunkContent = chunkContent.trimStart();
-              isFirstChunk = false;
-            }
-            if (chunkContent !== "") {
-              const chunkId = `chatcmpl-${Date.now()}`;
-              const chunkCreated = chunkObj.created_at;
-              res.write(
-                "data: " +
-                  JSON.stringify({
-                    id: chunkId,
-                    object: "chat.completion.chunk",
-                    created: chunkCreated,
-                    model: data.model,
-                    choices: [
-                      {
-                        index: 0,
-                        delta: {
-                          content: chunkContent,
-                        },
-                        finish_reason: null,
-                      },
-                    ],
-                  }) +
-                  "\n\n"
-              );
-            }
-          } else if (chunkObj.event === "workflow_finished") {
-            workflowFinished = true;
-            const outputData = chunkObj.data.outputs;
-            let outputContent;
-            if (outputVariable) {
-              outputContent = outputData[outputVariable];
+          if (chunkObj.event === "message" || chunkObj.event === "agent_message" || chunkObj.event === "text_chunk") {
+            let chunkContent;
+            if (chunkObj.event === "text_chunk") {
+              chunkContent = chunkObj.data.text;
             } else {
-              outputContent = outputData;
+              chunkContent = chunkObj.answer;
             }
-            const chunkId = `chatcmpl-${Date.now()}`;
-            const chunkCreated = chunkObj.data.finished_at;
-            res.write(
-              "data: " +
-                JSON.stringify({
-                  id: chunkId,
-                  object: "chat.completion.chunk",
-                  created: chunkCreated,
-                  model: data.model,
-                  choices: [
-                    {
-                      index: 0,
-                      delta: {
-                        content: outputContent,
+    
+            if (isFirstChunk) {
+              chunkContent = chunkContent.trimStart();
+              isFirstChunk = false;
+            }
+            if (chunkContent !== "") {
+              const chunkId = `chatcmpl-${Date.now()}`;
+              const chunkCreated = chunkObj.created_at;
+              res.write(
+                "data: " +
+                  JSON.stringify({
+                    id: chunkId,
+                    object: "chat.completion.chunk",
+                    created: chunkCreated,
+                    model: data.model,
+                    choices: [
+                      {
+                        index: 0,
+                        delta: {
+                          content: chunkContent,
+                        },
+                        finish_reason: null,
                       },
-                      finish_reason: "null",
-                    },
-                  ],
-                }) +
-                "\n\n"
-            );
-            res.write(
-              "data: " +
-                JSON.stringify({
-                  id: chunkId,
-                  object: "chat.completion.chunk",
-                  created: chunkCreated,
-                  model: data.model,
-                  choices: [
-                    {
-                      index: 0,
-                      delta: {},
-                      finish_reason: "stop",
-                    },
-                  ],
-                }) +
-                "\n\n"
-            );
-            res.write("data: [DONE]\n\n");
-            res.end();
-          }else if (chunkObj.event === "message_end") {
+                    ],
+                  }) +
+                  "\n\n"
+              );
+            }
+          } else if (chunkObj.event === "workflow_finished" || chunkObj.event === "message_end") {
             const chunkId = `chatcmpl-${Date.now()}`;
             const chunkCreated = chunkObj.created_at;
             res.write(
