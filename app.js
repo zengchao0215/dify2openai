@@ -193,7 +193,7 @@ app.post("/v1/chat/completions", async (req, res) => {
                   "\n\n"
               );
             }
-          } else if (chunkObj.event === "workflow_finished" || chunkObj.event === "message_end") {
+          } } else if (chunkObj.event === "workflow_finished" || chunkObj.event === "message_end") {
             const chunkId = `chatcmpl-${Date.now()}`;
             const chunkCreated = chunkObj.created_at;
             if (!isResponseEnded) {
