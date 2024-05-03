@@ -44,6 +44,10 @@ docker run -d -name d2o \
     --network bridge \
     -p 3000:3000 \
     -e DIFY_API_URL=https://api.dify.ai/v1 \
+<<<<<<< HEAD
+=======
+    -e BOT_TYPE=Chat \
+>>>>>>> c919277 (change readme.md)
     --restart always
     moeceo/dify2openai:latest
 ```
@@ -61,6 +65,10 @@ services:
     restart: always
     environment: 
       - DIFY_API_URL=https://api.dify.ai/v1
+<<<<<<< HEAD
+=======
+      - BOT_TYPE=Chat
+>>>>>>> c919277 (change readme.md)
 ```
 
 ## Usage
