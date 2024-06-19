@@ -38,13 +38,21 @@ pnpm start
 ### Docker Deployment
 
 - Build the image
+<<<<<<< HEAD
+```bash
+docker build -t dify2openai:latest .
+```
+
+- Run the container
+=======
+>>>>>>> 31d9474 (add /v1/models environment variables)
 ```bash
 docker build -t dify2openai:latest .
 ```
 
 - Run the container
 ```bash
-docker run -d -name d2o \
+docker run -d -name dify2openai \
     --network bridge \
     -p 3000:3000 \
     -e DIFY_API_URL=https://api.dify.ai/v1 \
@@ -69,6 +77,7 @@ services:
     environment: 
       - DIFY_API_URL=https://api.dify.ai/v1
       - BOT_TYPE=Chat
+      - MODELS_NAME==dify
 ```
 
 Please change the environment variables according to your needs.See [Environment Variable](#environment-variable) for more information.
@@ -126,6 +135,7 @@ This project provides some additional configuration items set with environment v
 | `BOT_TYPE`     | Yes      | The type of your dify bots                                                                                                                  | `Chat,Completion,Workflow`                                                                                                 |
 | `INPUT_VARIABLE`     | No      | The name of input variable in your own dify workflow bot                                                                                                                  | `query,text`                                                                                                 |
 | `OUTPUT_VARIABLE`     | No      | The name of output variable in your own dify workflow bot                                                                                                                  | `text`                                                                                                 |
+| `MODELS_NAME`     | No      | The value is the model name output by the /v1/models endpoint. The default value is `dify`.                                                                                                                 | `dify`                                                                                                 |
 ## Roadmap
 **Coming Soon**
 *   Image support
