@@ -37,8 +37,12 @@ pnpm start
 
 ### Docker Deployment
 
-- If you are using Docker Desktop, you can run the following command to start the project:
+- Build the image
+```bash
+docker build -t dify2openai:latest .
+```
 
+- Run the container
 ```bash
 docker run -d -name d2o \
     --network bridge \
@@ -46,16 +50,18 @@ docker run -d -name d2o \
     -e DIFY_API_URL=https://api.dify.ai/v1 \
     -e BOT_TYPE=Chat \
     --restart always
-    moeceo/dify2openai:latest
+    dify2openai:latest
 ```
 
-- You can also use Docker Compose to deploy the project:
+- You can also use Docker Compose to build the image and run the container:
 ```bash
 version: '3.5'
 services:
-  d2o:
-    container_name: d2o
-    image: moeceo/dify2openai:latest
+  dify2openai:
+    container_name: dify2openai
+    build:
+      context: .
+      dockerfile: Dockerfile
     network_mode: bridge
     ports:
       - "3000:3000"
@@ -64,6 +70,26 @@ services:
       - DIFY_API_URL=https://api.dify.ai/v1
       - BOT_TYPE=Chat
 ```
+
+Please change the environment variables according to your needs.See [Environment Variable](#environment-variable) for more information.
+
+### Docker Compose Deployment
+
+- Build the image
+```bash
+docker build -t dify2openai:latest .
+```
+
+- Run the container
+```bash
+docker-compose up -d
+```
+
+- You can also use Docker Compose to build the image and run the container:
+```bash
+version: '3.5'
+services:
+  dify2openai:
 
 ## Usage
 1. OpenAI Clients
