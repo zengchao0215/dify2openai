@@ -38,29 +38,12 @@ pnpm start
 ### Docker Deployment
 
 - Build the image
-<<<<<<< HEAD
 ```bash
 docker build -t dify2openai:latest .
 ```
 
 - Run the container
-=======
->>>>>>> 31d9474 (add /v1/models environment variables)
 ```bash
-docker build -t dify2openai:latest .
-```
-
-- Run the container
-=======
-```bash
-<<<<<<< HEAD
-=======
-docker build -t dify2openai:latest .
-```
-
-- Run the container
-```bash
->>>>>>> 5792833 (fix readme.md)
 docker run -d -name dify2openai \
     --network bridge \
     -p 3000:3000 \
@@ -86,7 +69,6 @@ services:
     environment: 
       - DIFY_API_URL=https://api.dify.ai/v1
       - BOT_TYPE=Chat
-      - MODELS_NAME==dify
 ```
 
 Please change the environment variables according to your needs.See [Environment Variable](#environment-variable) for more information.
