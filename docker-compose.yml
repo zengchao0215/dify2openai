@@ -1,8 +1,10 @@
 version: '3.5'
 services:
-  d2o:
-    container_name: d2o
-    image: moeceo/dify2openai:latest
+  dify2openai:
+    container_name: dify2openai
+    build:
+      context: .
+      dockerfile: Dockerfile
     network_mode: bridge
     ports:
       - "3000:3000"
