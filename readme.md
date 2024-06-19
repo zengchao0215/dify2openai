@@ -51,7 +51,16 @@ docker build -t dify2openai:latest .
 ```
 
 - Run the container
+=======
 ```bash
+<<<<<<< HEAD
+=======
+docker build -t dify2openai:latest .
+```
+
+- Run the container
+```bash
+>>>>>>> 5792833 (fix readme.md)
 docker run -d -name dify2openai \
     --network bridge \
     -p 3000:3000 \
