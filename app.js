@@ -68,6 +68,21 @@ app.get('/', (req, res) => {
   `);
 });
 
+app.get('/v1/models', (req, res) => {
+  const models = {
+    "object": "list",
+    "data": [
+      {
+        "id": process.env.MODELS_NAME || "dify",
+        "object": "model",
+        "owned_by": "dify",
+        "permission": null,
+      }
+    ]
+  };
+  res.json(models);
+});
+
 app.post("/v1/chat/completions", async (req, res) => {
   const authHeader =
     req.headers["authorization"] || req.headers["Authorization"];
