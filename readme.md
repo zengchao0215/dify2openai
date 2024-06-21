@@ -109,6 +109,7 @@ This project provides some additional configuration items set with environment v
 | `BOT_TYPE`     | Yes      | The type of your dify bots                                                                                                                  | `Chat,Completion,Workflow`                                                                                                 |
 | `INPUT_VARIABLE`     | No      | The name of input variable in your own dify workflow bot                                                                                                                  | `query,text`                                                                                                 |
 | `OUTPUT_VARIABLE`     | No      | The name of output variable in your own dify workflow bot                                                                                                                  | `text`                                                                                                 |
+| `MODELS_NAME`     | No      | The value is the model name output by the /v1/models endpoint. The default value is `dify`.                                                                                                                 | `dify`                                                                                                 |
 ## Roadmap
 **Coming Soon**
 *   Image support
