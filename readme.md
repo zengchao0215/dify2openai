@@ -35,6 +35,33 @@ pnpm install
 pnpm start
 ```
 
+## Usage
+1. OpenAI Clients
+
+![botgem](pictures/usage.png)
+
+2. Code
+
+```JavaScript
+const response = await fetch('http://localhost:3000/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_DFIY_API_KEY',
+  },
+  body: JSON.stringify({
+    model: 'dify',
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: 'Hello, how are you?' },
+    ],
+  }),
+});
+
+const data = await response.json();
+console.log(data);
+```
+
 ### Docker Deployment
 
 - Build the image
@@ -73,50 +100,6 @@ services:
 
 Please change the environment variables according to your needs.See [Environment Variable](#environment-variable) for more information.
 
-### Docker Compose Deployment
-
-- Build the image
-```bash
-docker build -t dify2openai:latest .
-```
-
-- Run the container
-```bash
-docker-compose up -d
-```
-
-- You can also use Docker Compose to build the image and run the container:
-```bash
-version: '3.5'
-services:
-  dify2openai:
-
-## Usage
-1. OpenAI Clients
-
-![botgem](pictures/usage.png)
-
-2. Code
-
-```JavaScript
-const response = await fetch('http://localhost:3000/v1/chat/completions', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer YOUR_DFIY_API_KEY',
-  },
-  body: JSON.stringify({
-    model: 'dify',
-    messages: [
-      { role: 'system', content: 'You are a helpful assistant.' },
-      { role: 'user', content: 'Hello, how are you?' },
-    ],
-  }),
-});
-
-const data = await response.json();
-console.log(data);
-```
 ## Environment Variable
 This project provides some additional configuration items set with environment variables:
 
