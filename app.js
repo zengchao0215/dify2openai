@@ -69,11 +69,14 @@ app.get('/', (req, res) => {
 });
 
 app.get('/v1/models', (req, res) => {
+  let authorization = req.headers.authorization;
+  authorization = authorization.replace("Bearer ", "");
   const models = {
     "object": "list",
     "data": [
       {
-        "id": process.env.MODELS_NAME || "dify",
+        // "id": process.env.MODELS_NAME || "dify",
+        "id": authorization,
         "object": "model",
         "owned_by": "dify",
         "permission": null,

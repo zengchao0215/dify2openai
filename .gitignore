@@ -130,3 +130,4 @@ dist
 .pnp.*
 
 !.github
+.vscode/settings.json
